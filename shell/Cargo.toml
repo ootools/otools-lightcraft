@@ -1,0 +1,101 @@
+# LightCraft 的 OTools 插件外壳。
+#
+# 这一层是我们自己的代码。上游 `apps/lightcraft-web` 的**浏览器宿主模块**被逐字复用
+# （`src/{backend,backup,bench,files,safety,store,wire,workers}.rs` 是上游在 upstream.pin
+# 那个 commit 的原样副本，方便 diff 同步；见 AGENTS.md）——照片原图、目录、缩略图与
+# UI 偏好都存在浏览器存储里（OPFS，不行就 IndexedDB），和上游网页版一致。
+#
+# 我们只替换「宿主边界」：
+#   - `src/web.rs`    改自上游 web.rs：导入弹宿主的打开对话框、导出交给宿主写盘、
+#                     暗黑主题钉死为默认、界面语言跟随宿主；
+#   - `src/otools.rs` OTools 宿主桥（window.lightcraftOtools 的 wasm-bindgen 绑定）；
+#   - `src/main.rs`   入口：取中文字体 → 起应用。
+#
+# 上游源码在 `../upstream`（按 upstream.pin 的 commit 浅拉取，保持原样勿改），
+# 本 crate 用 path 依赖直接复用上游的 crate，不复制、不改动任何上游源码。
+[package]
+name = "otools-lightcraft-shell"
+description = "LightCraft as an OTools plugin: the upstream egui UI compiled to WebAssembly, browser-storage library + OTools host file I/O"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+# 独立的 workspace：上游 `upstream/` 有自己的 workspace，本 crate 不能并进去
+# （它是 wasm-only 的，并进去会让宿主的 `cargo build` 也去编译 eframe）。
+[workspace]
+
+[[bin]]
+name = "otools-lightcraft"
+path = "src/main.rs"
+
+[dependencies]
+lightcraft-engine = { path = "../upstream/crates/engine" }
+lightcraft-ui-egui = { path = "../upstream/crates/ui-egui" }
+lightcraft-preview = { path = "../upstream/crates/preview" }
+lightcraft-raster = { path = "../upstream/crates/raster" }
+lightcraft-codecs = { path = "../upstream/crates/codecs" }
+egui = { version = "0.36", default-features = false }
+log = { version = "0.4", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+crc32fast = "1"
+
+# 只在 wasm 下需要的依赖（宿主/桌面下本 crate 什么都不做）。
+# 上游 `apps/lightcraft-web` 用 glow 渲染（它自己的 wgpu 管线独立于 eframe），照抄。
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow"] }
+base64 = "0.22"
+wasm-bindgen = "0.2.129"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3"
+features = [
+    "Blob",
+    "BlobPropertyBag",
+    "DedicatedWorkerGlobalScope",
+    "Document",
+    "DomStringList",
+    "Element",
+    "EventTarget",
+    "File",
+    "FileList",
+    "FileSystemCreateWritableOptions",
+    "FileSystemDirectoryHandle",
+    "FileSystemFileHandle",
+    "FileSystemGetDirectoryOptions",
+    "FileSystemGetFileOptions",
+    "FileSystemRemoveOptions",
+    "FileSystemWritableFileStream",
+    "HtmlAnchorElement",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlInputElement",
+    "IdbDatabase",
+    "IdbFactory",
+    "IdbKeyRange",
+    "IdbObjectStore",
+    "IdbOpenDbRequest",
+    "IdbRequest",
+    "IdbTransaction",
+    "IdbTransactionMode",
+    "IdbVersionChangeEvent",
+    "Location",
+    "MessageEvent",
+    "Navigator",
+    "Performance",
+    "StorageManager",
+    "Url",
+    "Window",
+    "Worker",
+    "WorkerOptions",
+    "WorkerType",
+    "WritableStream",
+]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 16

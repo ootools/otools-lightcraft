@@ -1,0 +1,27 @@
+{
+  "devUrl": "http://127.0.0.1:6488",
+  "developerName": "jry",
+  "displayName": "LightCraft",
+  "displayNameCN": "LightCraft",
+  "entry": "dist/index.html",
+  "quickDev": true,
+  "hasAd": false,
+  "icon": "📷",
+  "inPluginPurchase": false,
+  "key": [
+    "lightcraft",
+    "lightroom",
+    "照片管理",
+    "raw",
+    "修图",
+    "冲图",
+    "图库",
+    "调色"
+  ],
+  "openInBrowser": false,
+  "packid": "otools-lightcraft",
+  "screenshots": [],
+  "summary": "LightCraft（开源、纯 Rust 重写的 Adobe Lightroom 式照片库与 RAW 冲图）的 OTools 插件版：图库管理、评分筛选、RAW 冲图、局部蒙版与预设。",
+  "uuid": "otools-lightcraft",
+  "version": "0.1.0"
+}
