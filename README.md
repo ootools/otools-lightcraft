@@ -31,7 +31,7 @@ node scripts/build-wasm.mjs         # 拉上游+字体 → trunk build --release
 
 ```bash
 node scripts/serve-dist.mjs         # 本地起 http://127.0.0.1:6488 试 dist/
-pwsh -File scripts/deploy-to-otools.ps1   # 同步到 otools 仓库的 plugins/otools-lightcraft
+pwsh -File scripts/deploy-to-otools.ps1   # 装进 OTools 本地插件目录（~/.otools/plugins，不碰任何仓库）
 node scripts/pack-plugin.mjs        # 打 .oplg（配合 verify-plugin.mjs 校验）
 ```
 

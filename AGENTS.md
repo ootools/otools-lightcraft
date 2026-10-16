@@ -83,7 +83,8 @@
 
 - **构建 dist/** → `node scripts/build-wasm.mjs`（自动 take upstream + fonts）。
 - **本地试跑** → `node scripts/serve-dist.mjs`（浏览器试）或
-  `scripts/deploy-to-otools.ps1` 同步到 otools 仓库的 `plugins/otools-lightcraft`。
+  `scripts/deploy-to-otools.ps1` 装进 OTools 本地插件目录
+  （`~/.otools/plugins/otools-lightcraft`，仓库外，不会往 otools 仓库丢文件）。
 - **改 OTools 侧的元信息**（名称/图标/关键词）→ `plugin.json`。
 
 ## 不要做的事

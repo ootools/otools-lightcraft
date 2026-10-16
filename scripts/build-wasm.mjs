@@ -220,4 +220,4 @@ const listDir = (dir, prefix = '') => {
   }
 };
 listDir(dist);
-console.log(`\n完成。${entry} 就绪；用 scripts/deploy-to-otools.ps1 同步到 otools 仓库即可本地试跑。`);
+console.log(`\n完成。${entry} 就绪；用 scripts/deploy-to-otools.ps1 装进 OTools 本地插件目录即可试跑。`);
