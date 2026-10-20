@@ -20,6 +20,21 @@ Adobe Lightroom 式照片库与 RAW 冲图，ArtCraft 家族的一员）移植�
 - 显示器 ICC 配置、外部编辑器、在文件管理器中显示是桌面专属，不可用；
 - WebGPU 渲染仍在上游进行中，出图走上游现有的管线。
 
+## MCP / AI 自动化
+
+插件同时提供一个可被 OTools 宿主 MCP 网关加载的 native 适配层：`native/` 把上游
+`lightcraft-mcp` 的 headless 后端编成动态库，宿主用一个统一 MCP 端点暴露工具。
+当前完整保留上游 **388** 个工具；`plugin.json` 的 `mcp.expose` 只是设置页的默认勾选种子，
+其余工具可由用户显式授权。会话跨调用持久（例如 `command_run → doc_inspect`）。
+
+```bash
+cargo test --release --manifest-path native/Cargo.toml
+cargo build --release --manifest-path native/Cargo.toml
+```
+
+正式包包含 `lib/{macOS.dylib,Windows.dll,Linux.so}`；macOS 为 arm64 + x86_64 的
+universal dylib。native 产物不进 git，由 `release-plugin.yml` 的跨平台 job 构建。
+
 ## 构建
 
 ```bash

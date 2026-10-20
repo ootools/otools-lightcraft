@@ -2,7 +2,7 @@
 
 给后续接手这个仓库的 agent（和人）的规则。核心一句话：**`upstream/` 与
 `shell/src/` 里的上游副本一行都不要改**，所有移植代码集中在 `web.rs` /
-`otools.rs` / `main.rs`，这样上游同步永远干净。
+`otools.rs` / `main.rs`，宿主 MCP 适配层单独放在 `native/`，这样上游同步永远干净。
 
 ## 铁律
 
@@ -13,9 +13,11 @@
    `apps/lightcraft-web/src/` 的逐字副本**（连文件名都一致，方便
    `diff upstream/apps/lightcraft-web/src shell/src` 同步）。要改行为去改
    `shell/src/web.rs`（上游 web.rs 的改写版）或 `shell/src/otools.rs`。
-3. **不引入 native cdylib**。OTools 宿主已经注入了
+3. **`shell/` 不引入 native cdylib**。OTools 宿主已经注入了
    `tools_webview_read_file` / `tools_webview_write_file` 与文件对话框；库与原图的
    持久化走浏览器存储（OPFS/IndexedDB），和上游网页版同款，别往宿主盘上写库。
+   **例外（已确立）**：`native/` 是为宿主 MCP 网关暴露 headless 能力的独立适配层，
+   不参与 WASM 构建，也不是前端外壳的替代。
 4. **改 `shell/Cargo.toml` 的上游依赖版本时，对齐 `upstream/Cargo.toml` 的
    `[workspace.dependencies]`**（egui/eframe 目前是 `0.36` 这一档）。
 
@@ -67,6 +69,7 @@
 | `shell/worker.js` | 渲染 worker 模板；构建后由 build-wasm.mjs 把胶水文件名替换成 trunk 实际产物 |
 | `fonts.pin` + `scripts/fetch-fonts.mjs` | Noto Sans CJK SC Regular（OFL），按 pinned commit + sha256 取 |
 | `upstream/` | （不在 git 里）上游源码，都是 path 依赖直接复用 |
+| `native/` | 宿主 MCP 网关的 headless 适配层（独立 workspace，见下节） |
 
 ## 持久化模型（为什么库不落宿主盘）
 
@@ -78,6 +81,24 @@
 - 代价：webview 的存储可能被系统清（OPFS 持久化已在启动时申请），
   所以「File ▸ Back Up Library…」在插件里同样可用且值得用；
 - 别把库搬到宿主磁盘：那意味着重写五个上游模块，破坏同步性，收益却只有存储位置。
+
+## native 适配层（宿主 MCP 网关）
+
+`native/` 把上游现成的 `crates/mcp` headless 后端编成动态库，让外部 AI 工具经宿主的
+单一 MCP 端点操作 LightCraft。它不参与 WASM 构建，与 `shell/` 互不依赖。
+
+- **独立 workspace**：并进上游 workspace 会把 GUI/GPU 依赖也拉进插件构建。
+- **上游源码不在 git 里**：构建前先 `node scripts/fetch-upstream.mjs`。
+- **专用线程持有常驻 `Server`**：上游 `Server` 持有 `Box<dyn Backend>` 且不保证
+  `Send`。`native/src/mcp.rs` 在线程内保留唯一 Server，宿主调用经 channel 串行进入，
+  以复用上游工具表、参数校验、注解与错误格式；`session_state_persists_across_calls`
+  用例守着跨调用会话状态。
+- **完整工具面**：上游默认生成每个命令一个 `cmd_*` 工具（本版本 388 个）。适配层
+  不裁剪，manifest 的 `mcp.expose` 只提供默认白名单种子，其余可在设置页授权。
+- **宿主 method**：`__otools_mcp_tools__` / `__otools_mcp_call__` /
+  `__otools_shutdown__`。
+- **产物**：`lib/{macOS.dylib,Windows.dll,Linux.so}`，不进 git；多平台由
+  `.github/workflows/release-plugin.yml` 构建并 lipo。
 
 ## 常见任务
 

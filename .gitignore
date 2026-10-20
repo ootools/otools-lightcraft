@@ -25,3 +25,10 @@ Thumbs.db
 
 # ---- 中文字体缓存（fonts.pin 指定的 Noto CJK，按 SHA 下载，不入库）----
 fonts/cache/
+
+# ---- native 适配层的构建产物 ----
+# 发布流水线按宿主约定生成 lib/{macOS.dylib,Windows.dll,Linux.so}，不进 git。
+native/target/
+*.dylib
+*.dll
+*.so

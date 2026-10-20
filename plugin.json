@@ -23,5 +23,31 @@
   "screenshots": [],
   "summary": "LightCraft（开源、纯 Rust 重写的 Adobe Lightroom 式照片库与 RAW 冲图）的 OTools 插件版：图库管理、评分筛选、RAW 冲图、局部蒙版与预设。",
   "uuid": "otools-lightcraft",
-  "version": "0.1.0"
+  "version": "0.1.1",
+  "native": {
+    "enabled": true
+  },
+  "mcp": {
+    "enabled": true,
+    "backend": "headless",
+    "namespace": "lightcraft",
+    "expose": [
+      "command_list",
+      "command_run",
+      "command_batch",
+      "doc_inspect",
+      "render_preview",
+      "list_commands",
+      "run_command",
+      "import",
+      "query_photos",
+      "select_photos",
+      "list_controls",
+      "get_develop",
+      "set_develop",
+      "apply_preset",
+      "render_photo",
+      "export"
+    ]
+  }
 }
