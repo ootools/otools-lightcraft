@@ -3,7 +3,7 @@
   "ssh": "git@github.com:storytold/lightcraft.git",
   "https": "https://github.com/storytold/lightcraft.git",
   "ref": "main",
-  "commit": "0da998f24dfc03069d49867f8877af2bf7c51f94",
+  "commit": "4f0b110bcbd2e350c6d97b47f1d824c2222295c4",
   "strategy": "shallow-fetch-pinned-commit",
   "note": "上游代码不入库。改这个 commit 并跑 node scripts/fetch-upstream.mjs 即可同步；务必用完整 SHA，保证可复现。"
 }
