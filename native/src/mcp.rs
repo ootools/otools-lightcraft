@@ -142,6 +142,24 @@ pub fn call_payload(name: &str, arguments: &Value) -> Value {
     }
 }
 
+/// 上游 `resources/list`。分发在 worker 线程里由上游 `Server` 处理，
+/// 因此 URI、name、description 与上游逐字一致，适配层不做任何复制。
+pub fn resources_payload() -> Result<Value, String> {
+    invoke_worker("resources/list", json!({}))
+}
+
+/// 上游 `resources/templates/list`。
+///
+/// 上游有这个方法并返回空表（LightCraft 的资源是 7 个固定 URI，没有模板）。
+pub fn resource_templates_payload() -> Result<Value, String> {
+    invoke_worker("resources/templates/list", json!({}))
+}
+
+/// 上游 `resources/read`。未知 uri 由上游给出 `-32002`，这里转成 `Err`。
+pub fn read_resource_payload(uri: &str) -> Result<Value, String> {
+    invoke_worker("resources/read", json!({ "uri": uri }))
+}
+
 pub fn shutdown_headless() {
     let Ok(sender) = worker().lock() else {
         return;
@@ -244,5 +262,52 @@ mod tests {
         shutdown_headless();
         let result = call_payload("doc_inspect", &json!({}));
         assert_ne!(result["isError"], true, "result: {result}");
+    }
+
+    #[test]
+    fn resources_list_matches_upstream() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let value = resources_payload().expect("resources/list");
+        let uris: Vec<&str> = value["resources"]
+            .as_array()
+            .expect("resources array")
+            .iter()
+            .filter_map(|r| r.get("uri").and_then(Value::as_str))
+            .collect();
+        // 上游 7 个固定 URI；少一个就是适配层把资源丢了。
+        assert_eq!(uris.len(), 7, "got {uris:?}");
+        for expected in [
+            "lightcraft://document",
+            "lightcraft://commands",
+            "lightcraft://library",
+            "lightcraft://photos",
+            "lightcraft://photo/active",
+            "lightcraft://develop/active",
+            "lightcraft://controls",
+        ] {
+            assert!(uris.contains(&expected), "missing {expected} in {uris:?}");
+        }
+    }
+
+    #[test]
+    fn read_resource_round_trips_and_rejects_unknown_uri() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let contents = read_resource_payload("lightcraft://commands")
+            .expect("read commands resource")
+            .get("contents")
+            .and_then(Value::as_array)
+            .cloned()
+            .expect("contents array");
+        let text = contents[0]
+            .get("text")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        assert!(!text.trim().is_empty(), "commands resource came back empty");
+
+        let error = read_resource_payload("lightcraft://nope").expect_err("unknown uri must fail");
+        assert!(
+            error.contains("not found") || error.contains("resource"),
+            "error should say the resource is missing: {error}"
+        );
     }
 }

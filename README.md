@@ -27,6 +27,21 @@ Adobe Lightroom 式照片库与 RAW 冲图，ArtCraft 家族的一员）移植�
 当前完整保留上游 **388** 个工具；`plugin.json` 的 `mcp.expose` 只是设置页的默认勾选种子，
 其余工具可由用户显式授权。会话跨调用持久（例如 `command_run → doc_inspect`）。
 
+上游的 **7 个资源**也一并暴露，全部由上游 `Server::handle` 产生（适配层只转发）：
+
+| URI | 内容 |
+| --- | --- |
+| `lightcraft://document` | 库状态与计数（同 `doc_inspect`） |
+| `lightcraft://commands` | 全部命令（同 `command_list`） |
+| `lightcraft://library` | 当前来源、筛选、排序、选择、活动照片/蒙版、撤销标签 |
+| `lightcraft://photos` | 当前视图里的照片（id、评分、旗标、元数据） |
+| `lightcraft://photo/active` | 活动照片的全部信息（文件、元数据、显影设置、相册、历史） |
+| `lightcraft://develop/active` | 活动照片的完整显影设置 JSON |
+| `lightcraft://controls` | 每个显影滑杆的 id、范围、默认值与当前值 |
+
+> `photo/active` 与 `develop/active` 需要会话里有活动照片：headless 初始状态没有照片时，
+> 上游会明确拒绝（`no photo`）。冒烟脚本会先 `import` 一张 8×8 PNG 再读这两条。
+
 ```bash
 cargo test --release --manifest-path native/Cargo.toml
 cargo build --release --manifest-path native/Cargo.toml
@@ -42,6 +57,7 @@ universal dylib。native 产物不进 git，由 `release-plugin.yml` 的跨平�
 
 | 插件版本 | 上游标签 | 上游提交 | 打包日期 |
 | --- | --- | --- | --- |
+| 0.1.3 | v0.9.1 | `4f0b110bcbd2e350c6d97b47f1d824c2222295c4` | 2026-10-24 |
 | 0.1.2 | v0.9.1 | `4f0b110bcbd2e350c6d97b47f1d824c2222295c4` | 2026-10-21 |
 | 0.1.1 | — | `0da998f24dfc03069d49867f8877af2bf7c51f94` | — |
 
