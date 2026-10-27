@@ -37,6 +37,11 @@ use crate::workers::{THUMB_INDEX, Workers};
 
 /// 「文件 ▸ Add from Device」等入口的打开对话框过滤（与上游网页版 ACCEPT 一致）。
 const PHOTO_EXTS: &[&str] = &["jpg", "jpeg", "png", "tif", "tiff", "webp", "dng", "cr2", "nef", "arw", "psd", "jxl", "gif", "bmp"];
+/// The web picker's accept list, derived from the engine's import extensions (both
+/// cases) so no format the engine can import is silently filtered out of the dialog.
+fn accept_list() -> String {
+    lightcraft_engine::import::accept_list()
+}
 
 /// After a failed save, wait this long before trying again (ms).
 const SAVE_RETRY_MS: f64 = 2000.0;
@@ -151,6 +156,36 @@ fn pick_via_host(originals: Originals, backend: Option<Backend>, ctx: egui::Cont
     });
 }
 
+/// Read a browser `File` into storage.
+async fn read_file(originals: Originals, backend: Option<Backend>, file: web_sys::File, ctx: egui::Context) {
+    match wasm_bindgen_futures::JsFuture::from(file.array_buffer()).await {
+        Ok(buf) => store_file(originals, backend, file.name(), js_sys::Uint8Array::new(&buf).to_vec(), ctx).await,
+        Err(e) => log::warn!("reading {}: {e:?}", file.name()),
+    }
+}
+
+/// Show the browser's open dialog; picked files are imported asynchronously.
+fn open_picker(originals: Originals, backend: Option<Backend>, ctx: egui::Context) {
+    let Some(doc) = window().and_then(|w| w.document()) else { return };
+    let Ok(input) = doc.create_element("input").map(|e| e.unchecked_into::<web_sys::HtmlInputElement>()) else { return };
+    input.set_type("file");
+    input.set_multiple(true);
+    input.set_accept(&accept_list());
+    let inp = input.clone();
+    let on_change = Closure::<dyn FnMut()>::new(move || {
+        if let Some(files) = inp.files() {
+            for i in 0..files.length() {
+                if let Some(f) = files.get(i) {
+                    wasm_bindgen_futures::spawn_local(read_file(originals.clone(), backend.clone(), f, ctx.clone()));
+                }
+            }
+        }
+    });
+    input.set_onchange(Some(on_change.as_ref().unchecked_ref()));
+    on_change.forget();
+    input.click();
+}
+
 fn services(originals: Originals, backend: Option<Backend>, files: Files, frozen: Rc<Cell<bool>>, ctx: egui::Context) -> Services {
     let (backup_backend, backup_files) = (backend.clone(), files);
     let restore_backend = backend.clone();
@@ -160,6 +195,9 @@ fn services(originals: Originals, backend: Option<Backend>, files: Files, frozen
         screen_profile: None,
         backup_library: Some(Box::new(move |session: &mut Session| {
             let Some(b) = backup_backend.clone() else { return Err("nothing is stored in this browser session (?store=memory)".into()) };
+            if let Some(why) = crate::backup::unsaved_refusal(session.unsaved()) {
+                return Err(why);
+            }
             // the photos' own names for the originals in the zip
             let names: std::collections::HashMap<String, String> = session
                 .catalog
@@ -208,6 +246,8 @@ fn services(originals: Originals, backend: Option<Backend>, files: Files, frozen
         save_curve_preset_file: None,
         pick_slideshow_templates: None,
         save_slideshow_template: None,
+        pick_print_templates: None,
+        save_print_template: None,
         write: Some(Box::new(|path: &str, bytes: &[u8]| {
             // 导出交给宿主的另存对话框写真实磁盘（上游网页版这里是浏览器下载）。
             // 宿主写盘是异步的，先返回 Ok 让导出流程收尾；取消/失败记在日志里。
@@ -266,6 +306,8 @@ async fn flush(files: Files, backend: Backend, dir: String, flushing: Rc<Cell<bo
         }
     }
     flushing.set(false);
+    // the page title drops its unsaved • now, even when nothing else wakes the page
+    request_repaint();
 }
 
 /// Everything loaded before the UI starts.
@@ -276,6 +318,9 @@ struct Boot {
     index: ThumbIndex,
     /// The library folder in storage (`library`, or a restored backup's).
     lib_dir: String,
+    /// Library files that exist but couldn't be read (#1507): the library isn't opened and
+    /// nothing is saved, so the stored copy stays as it was.
+    load_error: Option<String>,
 }
 
 async fn boot(opts: Options) -> Boot {
@@ -294,6 +339,7 @@ async fn boot(opts: Options) -> Boot {
     let files = Files::default();
     let mut index = ThumbIndex::default();
     let mut lib_dir = DEFAULT_LIBRARY_DIR.to_string();
+    let mut load_error = None;
     if let Some(b) = &backend {
         if opts.reset {
             // everything this site keeps in the browser, photos included: never without asking
@@ -311,21 +357,32 @@ async fn boot(opts: Options) -> Boot {
             }
         }
         // a restored backup lives in its own folder (see `backup`)
-        if let Ok(Some(d)) = b.read(ACTIVE_LIBRARY).await {
-            let d = String::from_utf8_lossy(&d).trim().to_string();
-            if valid_library_dir(&d) {
-                lib_dir = d;
+        match b.read(ACTIVE_LIBRARY).await {
+            Ok(Some(d)) => {
+                let d = String::from_utf8_lossy(&d).trim().to_string();
+                if valid_library_dir(&d) {
+                    lib_dir = d;
+                }
+            }
+            Ok(None) => {}
+            // not knowing which library is in use, any library opened could be the wrong one
+            Err(e) => load_error = Some(format!("couldn't read which library is in use from browser storage ({e})")),
+        }
+        if load_error.is_none() {
+            let mut reads = Vec::new();
+            for name in LIBRARY_FILES {
+                reads.push((name, b.read(&library_key(&lib_dir, name)).await));
+            }
+            if let Err(e) = crate::files::preload_library(&files, reads) {
+                log::error!("{e}");
+                load_error = Some(e);
             }
         }
-        for name in LIBRARY_FILES {
-            match b.read(&library_key(&lib_dir, name)).await {
-                Ok(Some(data)) => files.preload(name, data),
-                Ok(None) => {}
-                Err(e) => log::error!("reading {name}: {e}"),
-            }
-        }
-        if let Ok(Some(j)) = b.read(THUMB_INDEX).await {
-            index = ThumbIndex::from_json(&j);
+        let index_read = b.read(THUMB_INDEX).await;
+        match &index_read {
+            Ok(Some(j)) => index = ThumbIndex::from_json(j),
+            Ok(None) => {}
+            Err(e) => log::warn!("reading the thumbnail index: {e}"),
         }
         crate::backend::request_persistence(|granted| {
             if !granted {
@@ -335,7 +392,8 @@ async fn boot(opts: Options) -> Boot {
                 );
             }
         });
-        // thumbnails stored without an index entry (index saved late, or lost): delete them
+        // thumbnails stored without an index entry (index saved late, or lost): delete them; not
+        // when the index couldn't be read, which would make every thumbnail look unindexed
         let b2 = b.clone();
         let known: std::collections::HashSet<String> = b
             .list("thumbs")
@@ -345,7 +403,7 @@ async fn boot(opts: Options) -> Boot {
             .filter(|n| n.ends_with(".jpg"))
             .map(|n| n.trim_end_matches(".jpg").to_string())
             .collect();
-        let orphans: Vec<String> = known.into_iter().filter(|k| !index.contains(k)).collect();
+        let orphans: Vec<String> = if index_read.is_ok() { known.into_iter().filter(|k| !index.contains(k)).collect() } else { Vec::new() };
         if !orphans.is_empty() {
             wasm_bindgen_futures::spawn_local(async move {
                 for k in &orphans {
@@ -362,7 +420,7 @@ async fn boot(opts: Options) -> Boot {
         index.len(),
         index.total() as f64 / 1e6
     );
-    Boot { opts, backend, files, index, lib_dir }
+    Boot { opts, backend, files, index, lib_dir, load_error }
 }
 
 struct WebApp {
@@ -379,13 +437,15 @@ struct WebApp {
     lib_dir: String,
     bench: Option<Bench>,
     first_frame_logged: bool,
+    /// The page title last set (`document.title`), so it is written only when it changes.
+    title: String,
     last_save: f64,
     ui_written: Vec<u8>,
 }
 
 impl WebApp {
     fn new(cc: &eframe::CreationContext<'_>, boot: Boot, chinese_font: Vec<u8>) -> Self {
-        let Boot { opts, backend, files, index, lib_dir } = boot;
+        let Boot { opts, backend, files, index, lib_dir, load_error } = boot;
         let originals = Originals::default();
         let t = perf_now();
         let mut session = Session::new();
@@ -397,7 +457,13 @@ impl WebApp {
             on_disk: false,
         };
         let mut problem = None;
-        match session.open_library_in(stores, true).cloned() {
+        // a library that couldn't be read is not opened: it would show incomplete, then save over the stored copy
+        let read_failed = load_error.is_some();
+        let opened = match load_error {
+            Some(e) => Err(format!("{e}. Nothing was changed in storage")),
+            None => session.open_library_in(stores, true).cloned().map_err(|e| e.to_string()),
+        };
+        match opened {
             Ok(r) => log::info!(
                 "lightcraft: library {} in {:.0} ms ({} photos; snapshot seq {}, {} ops replayed)",
                 if r.created { "created" } else { "loaded" },
@@ -428,7 +494,8 @@ impl WebApp {
         }
         // previews are large (≤ 2560 px, f32): keep few in a 32-bit address space
         session.media.preview_capacity = 3;
-        let frozen = Rc::new(Cell::new(false));
+        // nothing is saved while the stored library couldn't be read
+        let frozen = Rc::new(Cell::new(read_failed));
         let mut app = LightcraftApp::new(session, services(originals.clone(), backend.clone(), files.clone(), frozen.clone(), cc.egui_ctx.clone()))
             .with_chinese_font(chinese_font);
         let ui_written = files.get("ui.json").unwrap_or_default();
@@ -471,6 +538,7 @@ impl WebApp {
             lib_dir,
             bench: opts.bench.then(|| Bench::new(origin)),
             first_frame_logged: false,
+            title: String::new(),
             last_save: 0.0,
             ui_written,
         }
@@ -489,22 +557,37 @@ impl WebApp {
 
     fn import_dropped(&mut self, ctx: &egui::Context) {
         let dropped = ctx.input(|i| i.raw.dropped_files.clone());
+        // a dialog is on screen (the card said so while the files hovered): nothing is read or imported
+        // (files read from an earlier drop still finish below)
+        if !dropped.is_empty() && self.app.ui.dialog.is_some() {
+            self.app.toast(ctx, lightcraft_ui_egui::i18n::tr("Close the open dialog, then drop the files again"));
+            return;
+        }
         for f in dropped {
             let (originals, backend, ctx) = (self.originals.clone(), self.backend.clone(), ctx.clone());
             wasm_bindgen_futures::spawn_local(async move {
                 let name = f.path().to_string_lossy().to_string();
                 match f.bytes_async().await {
                     Ok(bytes) => store_file(originals, backend, name, bytes, ctx).await,
-                    Err(e) => log::warn!("reading dropped {name}: {e}"),
+                    Err(e) => notice(lightcraft_ui_egui::i18n::dropped_file_unreadable(&name, &e.to_string())),
                 }
             });
         }
         let paths = self.originals.take_pending();
         if !paths.is_empty() {
-            let n = paths.len();
             match self.app.run("library.import", json!({"paths": paths})) {
-                Ok(_) => self.app.toast(ctx, format!("Added {n} photo{}", if n == 1 { "" } else { "s" })),
-                Err(e) => log::warn!("import: {e}"),
+                // what the import did, not what was submitted: duplicates and unsupported files add nothing,
+                // a drop that only finds duplicates says nothing (as the desktop import's toast does when it
+                // shows where they are), and one whose files could not be read says so
+                Ok(report) => {
+                    if let Some(notice) = lightcraft_ui_egui::i18n::dropped_photos_outcome(&report) {
+                        self.app.toast(ctx, notice);
+                    }
+                }
+                Err(e) => {
+                    log::warn!("import: {e}");
+                    self.app.toast(ctx, lightcraft_ui_egui::i18n::dropped_import_failed(&e));
+                }
             }
         }
     }
@@ -637,7 +720,6 @@ impl eframe::App for WebApp {
             let now = ctx.input(|i| i.time);
             self.app.ui.toast = Some((text, now + NOTICE_SECS, None));
         }
-        self.run_inbox();
         self.sync_host_language();
         self.import_dropped(ctx);
         self.load_originals(ctx);
@@ -669,10 +751,46 @@ impl eframe::App for WebApp {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.app.ui(ui);
+        // eframe's web runner ignores `ViewportCommand::Title`: name the open photo in the page title
+        let title = self.app.page_title(self.files.is_dirty() || self.flushing.get());
+        if title != self.title
+            && let Some(doc) = window().and_then(|w| w.document())
+        {
+            doc.set_title(&title);
+            self.title = title;
+        }
         if !self.first_frame_logged && !self.app.widgets.is_empty() {
             self.first_frame_logged = true;
             log::info!("lightcraft first UI frame at {:.0} ms after navigation start", perf_now());
         }
+    }
+}
+
+/// "Auto" follows the browser's languages (issue #2085): the first of `navigator.languages` (else
+/// `navigator.language`) that LightCraft ships becomes the UI's default. Every step is fallible
+/// (as in [`crate::safety::acquire_tab_lock`]): without a usable navigator Auto stays English,
+/// as before.
+fn install_browser_language() {
+    let Ok(navigator) = js_sys::Reflect::get(&js_sys::global(), &"navigator".into()) else { return };
+    let mut tags: Vec<String> = Vec::new();
+    if let Ok(languages) = js_sys::Reflect::get(&navigator, &"languages".into())
+        && let Some(languages) = languages.dyn_ref::<js_sys::Array>()
+    {
+        for tag in languages.iter() {
+            if let Some(tag) = tag.as_string() {
+                tags.push(tag);
+            }
+        }
+    }
+    if tags.is_empty()
+        && let Ok(language) = js_sys::Reflect::get(&navigator, &"language".into())
+        && let Some(language) = language.as_string()
+    {
+        tags.push(language);
+    }
+    if let Some(language) = lightcraft_ui_egui::i18n::locale_from_tags(&tags) {
+        lightcraft_ui_egui::i18n::set_default_language(language);
+        log::info!("lightcraft: default language {language:?} from the browser's languages");
     }
 }
 
@@ -686,6 +804,7 @@ pub fn start() {
     }
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
     safety::install_panic_hook();
+    install_browser_language();
     log::info!("lightcraft: wasm instantiated at {:.0} ms", perf_now());
     log::info!("otools host bridge available: {}", crate::otools::available());
     wasm_bindgen_futures::spawn_local(async move {
