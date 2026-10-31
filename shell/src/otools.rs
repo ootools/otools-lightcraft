@@ -26,6 +26,31 @@ extern "C" {
     /// `{name, dataBase64}` → `{path}` 或 `null`（用户取消）。
     #[wasm_bindgen(js_namespace = lightcraftOtools, js_name = "saveFile")]
     fn host_save_file(request: JsValue) -> js_sys::Promise;
+
+    /// 宿主投递的「打开方式」：JS 侧已把文件读成字节攒好，这里一次取走。
+    #[wasm_bindgen(js_namespace = lightcraftOtools, js_name = "takeDelivered")]
+    fn take_delivered_raw() -> js_sys::Array;
+}
+
+/// 取走宿主投递的文件，返回 `(文件名, 真实路径, 字节)`。
+///
+/// 方向与保存相反：宿主在系统里双击已绑定扩展名的照片 → 投递队列 → 本函数取走 →
+/// `WebShell::logic` 存进浏览器存储并 `library.import`（与「从设备添加」同一条路）。
+pub fn drain_delivered() -> Vec<OpenedFile> {
+    let mut out = Vec::new();
+    for item in take_delivered_raw().iter() {
+        if !item.is_object() {
+            continue;
+        }
+        let name = field(&item, "name").unwrap_or_else(|| "untitled".to_string());
+        let path = field(&item, "path").unwrap_or_default();
+        let data = field(&item, "dataBase64").unwrap_or_default();
+        match base64::engine::general_purpose::STANDARD.decode(data) {
+            Ok(bytes) => out.push((name, path, bytes)),
+            Err(e) => log::error!("delivered file {name} is not valid base64: {e}"),
+        }
+    }
+    out
 }
 
 /// 一次打开的结果：`(文件名, 宿主的真实路径, 字节)`。

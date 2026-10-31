@@ -721,6 +721,14 @@ impl eframe::App for WebApp {
             self.app.ui.toast = Some((text, now + NOTICE_SECS, None));
         }
         self.sync_host_language();
+        // 宿主投递的「打开方式」：系统里双击已绑定扩展名的照片 → 存进浏览器存储并
+        // 排队导入，与「从设备添加」、拖放走同一条路（`import_dropped` 会取走它们）。
+        for (name, _path, bytes) in crate::otools::drain_delivered() {
+            let (originals, backend, ctx) = (self.originals.clone(), self.backend.clone(), ctx.clone());
+            wasm_bindgen_futures::spawn_local(async move {
+                store_file(originals, backend, name, bytes, ctx).await;
+            });
+        }
         self.import_dropped(ctx);
         self.load_originals(ctx);
         if let Some(w) = &self.workers {
@@ -861,6 +869,11 @@ fn install_locale_listener() {
     }) as Box<dyn FnMut()>);
     let _ = window.add_event_listener_with_callback(
         "otools-locale-changed",
+        closure.as_ref().unchecked_ref::<js_sys::Function>(),
+    );
+    // 宿主投递了文件：同一份「置位 + 请求重绘」逻辑，让下一帧的 logic 去取件。
+    let _ = window.add_event_listener_with_callback(
+        "otools-open-files-arrived",
         closure.as_ref().unchecked_ref::<js_sys::Function>(),
     );
     closure.forget();

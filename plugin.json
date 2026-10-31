@@ -4,6 +4,18 @@
   "displayName": "LightCraft",
   "displayNameCN": "LightCraft",
   "entry": "dist/index.html",
+  "fileAssociations": [
+    { "ext": "jpg", "desc": "JPEG 照片", "mime": "image/jpeg" },
+    { "ext": "jpeg", "desc": "JPEG 照片", "mime": "image/jpeg" },
+    { "ext": "png", "desc": "PNG 图像", "mime": "image/png" },
+    { "ext": "tif", "desc": "TIFF 图像", "mime": "image/tiff" },
+    { "ext": "tiff", "desc": "TIFF 图像", "mime": "image/tiff" },
+    { "ext": "webp", "desc": "WebP 图像", "mime": "image/webp" },
+    { "ext": "dng", "desc": "DNG 原始照片", "mime": "image/x-adobe-dng" },
+    { "ext": "cr2", "desc": "Canon 原始照片", "mime": "image/x-canon-cr2" },
+    { "ext": "nef", "desc": "Nikon 原始照片", "mime": "image/x-nikon-nef" },
+    { "ext": "arw", "desc": "Sony 原始照片", "mime": "image/x-sony-arw" }
+  ],
   "quickDev": true,
   "hasAd": false,
   "icon": "📷",
