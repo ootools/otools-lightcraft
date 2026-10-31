@@ -35,7 +35,7 @@ lightcraft-ui-egui = { path = "../upstream/crates/ui-egui" }
 lightcraft-preview = { path = "../upstream/crates/preview" }
 lightcraft-raster = { path = "../upstream/crates/raster" }
 lightcraft-codecs = { path = "../upstream/crates/codecs" }
-egui = { version = "0.36", default-features = false }
+egui = { version = "0.37", default-features = false, features = ["default_fonts", "monochrome_emoji_fonts"] }
 log = { version = "0.4", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -44,7 +44,7 @@ crc32fast = "1"
 # 只在 wasm 下需要的依赖（宿主/桌面下本 crate 什么都不做）。
 # 上游 `apps/lightcraft-web` 用 glow 渲染（它自己的 wgpu 管线独立于 eframe），照抄。
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-eframe = { version = "0.36", default-features = false, features = ["default_fonts", "glow"] }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow"] }
 base64 = "0.22"
 wasm-bindgen = "0.2.129"
 wasm-bindgen-futures = "0.4"
@@ -99,3 +99,21 @@ features = [
 opt-level = 3
 lto = "thin"
 codegen-units = 16
+
+# 与上游 `upstream/Cargo.toml` 的 `[patch.crates-io]` 保持一致：上游把整个 egui 家族
+# 钉在 storytold/egui 的审查过的 commit 上（0.37 的 IME/文本改动还没进 crates.io）。
+# 本 crate 是独立 workspace，不写这段就会解析到 crates.io 的 egui，与上游
+# `craft-libs` / `lightcraft-ui-egui` 期望的 API 对不上（`IMEOutput::new` 缺失）。
+[patch.crates-io]
+ecolor = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+emath = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+epaint = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+epaint_default_fonts = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui-winit = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui-wgpu = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui_glow = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui_extras = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui_kittest = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui_system_font_provider = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+eframe = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }

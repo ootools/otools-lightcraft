@@ -412,7 +412,7 @@ dependencies = [
 [[package]]
 name = "craft-docpath"
 version = "0.1.0"
-source = "git+https://github.com/storytold/craft-libs?rev=82a24b006eefa036b43c09a67fb9a3fbd17ffe63#82a24b006eefa036b43c09a67fb9a3fbd17ffe63"
+source = "git+https://github.com/storytold/craft-libs?rev=c5a1cbfb5f9049f9270955caffb5bee5997aebf7#c5a1cbfb5f9049f9270955caffb5bee5997aebf7"
 
 [[package]]
 name = "crc32fast"
@@ -836,12 +836,13 @@ dependencies = [
 
 [[package]]
 name = "harfrust"
-version = "0.12.0"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c03d949a14aa089bbb282f7dd76a498a7f684428e4257202efc119ec010376f9"
+checksum = "948d0741125ba89cd3e1c23e5642415b6ade7e1d29d67ba25fb925b533e989d6"
 dependencies = [
  "bitflags",
  "bytemuck",
+ "once_cell",
  "read-fonts",
  "smallvec",
 ]
@@ -1225,7 +1226,7 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "lightcraft-catalog"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "chrono",
  "crc32fast",
@@ -1237,11 +1238,12 @@ dependencies = [
  "serde_json",
  "thiserror",
  "web-time",
+ "winapi-util",
 ]
 
 [[package]]
 name = "lightcraft-codecs"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "avif-serialize",
  "bytemuck",
@@ -1268,7 +1270,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-color"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-geom",
  "serde",
@@ -1276,10 +1278,10 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-denoise-core"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-raster",
- "miniz_oxide 0.8.9",
+ "miniz_oxide 0.9.1",
  "rayon",
  "serde",
  "serde_json",
@@ -1290,18 +1292,18 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-develop"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-color",
  "lightcraft-geom",
- "miniz_oxide 0.8.9",
+ "miniz_oxide 0.9.1",
  "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "lightcraft-engine"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "ab_glyph",
  "chrono",
@@ -1327,7 +1329,7 @@ dependencies = [
  "lightcraft-scenes",
  "lightcraft-slideshow",
  "log",
- "miniz_oxide 0.8.9",
+ "miniz_oxide 0.9.1",
  "rayon",
  "serde",
  "serde_json",
@@ -1338,7 +1340,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-faces"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "matrixmultiply",
  "ndarray",
@@ -1351,7 +1353,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-fetch"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "log",
  "rustls",
@@ -1362,22 +1364,22 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-geocode"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
- "miniz_oxide 0.8.9",
+ "miniz_oxide 0.9.1",
  "serde",
 ]
 
 [[package]]
 name = "lightcraft-geom"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "lightcraft-gpu"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "bytemuck",
  "lightcraft-color",
@@ -1393,14 +1395,14 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-inpaint"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "rayon",
 ]
 
 [[package]]
 name = "lightcraft-lensdb"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-develop",
  "lightcraft-geom",
@@ -1409,7 +1411,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-mcp"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-codecs",
  "lightcraft-engine",
@@ -1420,7 +1422,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-merge"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-codecs",
  "lightcraft-color",
@@ -1436,7 +1438,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-meta"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "chrono",
  "lightcraft-geom",
@@ -1447,7 +1449,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-pipeline"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-color",
  "lightcraft-develop",
@@ -1461,7 +1463,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-preview"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "jpeg-encoder",
  "lightcraft-raster",
@@ -1473,7 +1475,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-raster"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-color",
  "lightcraft-geom",
@@ -1483,7 +1485,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-raw"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "jpeg-encoder",
  "jxl-oxide",
@@ -1492,7 +1494,7 @@ dependencies = [
  "lightcraft-meta",
  "lightcraft-raster",
  "lightcraft-tiff",
- "miniz_oxide 0.8.9",
+ "miniz_oxide 0.9.1",
  "rayon",
  "serde",
  "thiserror",
@@ -1502,7 +1504,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-scenes"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-color",
  "lightcraft-raster",
@@ -1512,7 +1514,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-slideshow"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "lightcraft-raster",
  "serde",
@@ -1521,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "lightcraft-tiff"
-version = "0.14.0"
+version = "0.16.0"
 dependencies = [
  "serde",
  "thiserror",
@@ -2333,9 +2335,9 @@ dependencies = [
 
 [[package]]
 name = "read-fonts"
-version = "0.41.0"
+version = "0.43.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "046a7d674daf459825b32f5062056d6882db0d2f5a479fbd76ccfc870ac18709"
+checksum = "005c8acf251756c478b0bf402885bfd88a1476020c4c7e6060edc1aa68da38ea"
 dependencies = [
  "bytemuck",
  "font-types",
@@ -3079,6 +3081,15 @@ dependencies = [
  "raw-window-handle",
  "static_assertions",
  "web-sys",
+]
+
+[[package]]
+name = "winapi-util"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+dependencies = [
+ "windows-sys",
 ]
 
 [[package]]

@@ -9,7 +9,7 @@
 1. **`upstream/` 保持上游原样**。它是 `storytold/lightcraft` 在 `upstream.pin`
    里那个 commit 的浅拉取结果，**不在 git 里**（见 `scripts/fetch-upstream.mjs`）。
    任何「顺手改一下上游」的念头都会在下次同步时丢失或变成冲突。
-2. **`shell/src/{backend,backup,bench,files,safety,store,wire,workers}.rs` 是上游
+2. **`shell/src/{backend,backup,bench,drop_gate,files,safety,store,wire,workers}.rs` 是上游
    `apps/lightcraft-web/src/` 的逐字副本**（连文件名都一致，方便
    `diff upstream/apps/lightcraft-web/src shell/src` 同步）。要改行为去改
    `shell/src/web.rs`（上游 web.rs 的改写版）或 `shell/src/otools.rs`。
@@ -19,11 +19,14 @@
    **例外（已确立）**：`native/` 是为宿主 MCP 网关暴露 headless 能力的独立适配层，
    不参与 WASM 构建，也不是前端外壳的替代。
 4. **改 `shell/Cargo.toml` 的上游依赖版本时，对齐 `upstream/Cargo.toml` 的
-   `[workspace.dependencies]`**（egui/eframe 目前是 `0.36` 这一档）。
+   `[workspace.dependencies]`**（egui/eframe 目前是 `0.37` 这一档），并且必须把
+   上游的 `[patch.crates-io]`（整个 egui 家族钉在 `storytold/egui` 的审查 commit 上）
+   抄进 `shell/Cargo.toml`——本 crate 是独立 workspace，不抄就会解析到 crates.io 的
+   egui，与上游 `craft-libs` / `lightcraft-ui-egui` 期望的 API 对不上。
 
 ## 上手前必须知道的三件事
 
-- **rustc 版本**：上游 `rust-version = "1.95"`（egui 0.36 用了 1.95 才稳定的
+- **rustc 版本**：上游 `rust-version = "1.95"`（egui 0.37 仍要求 1.95 才稳定的
   `Vec::push_mut`）。本机 1.94 会在 `epaint` 上直接 `E0658`。
   `scripts/build-wasm.mjs` 会检查并提示。本机环境变量 `RUSTC_WRAPPER=sccache`
   指向 PATH 里的旧 rustc，会让 cargo 用错工具链——构建前 `unset RUSTC_WRAPPER`。

@@ -1,7 +1,7 @@
 //! LightCraft 的 OTools 插件外壳。
 //!
 //! 上游 `apps/lightcraft-web` 的浏览器宿主（OPFS/IndexedDB 持久化、渲染 worker、
-//! 备份/恢复、拖放导入）被逐字复用——`src/{backend,backup,bench,files,safety,store,
+//! 备份/恢复、拖放导入）被逐字复用——`src/{backend,backup,bench,drop_gate,files,safety,store,
 //! wire,workers}.rs` 是上游在 upstream.pin 那个 commit 的原样副本；`src/web.rs` 是
 //! 它 web.rs 的改写版，只动了「宿主边界」：
 //!
@@ -15,6 +15,8 @@
 
 mod backup;
 mod bench;
+#[cfg(any(test, target_arch = "wasm32"))]
+mod drop_gate;
 mod files;
 mod store;
 mod wire;
