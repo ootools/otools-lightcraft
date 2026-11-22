@@ -70,5 +70,6 @@
       "lightcraft://develop/active",
       "lightcraft://controls"
     ]
-  }
+  },
+  "openSourceUrl": "https://github.com/ootools/otools-lightcraft"
 }
