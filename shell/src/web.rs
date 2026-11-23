@@ -176,9 +176,27 @@ fn services(originals: Originals, backend: Option<Backend>, files: Files, frozen
                 })
                 .collect();
             let files = backup_files.clone();
-            notice("Backing up the library… (the download starts when it's ready)");
+            notice(if crate::otools::available() {
+                "Backing up the library… (写盘完成后会提示)"
+            } else {
+                "Backing up the library… (the download starts when it's ready)"
+            });
+            // 备份 zip 的交付：OTools 里弹宿主另存对话框写真实磁盘，否则退回浏览器下载。
+            let deliver: safety::Deliver = Box::new(|name: String, blob: web_sys::Blob| {
+                Box::pin(async move {
+                    if crate::otools::available() {
+                        let bytes = wasm_bindgen_futures::JsFuture::from(blob.array_buffer())
+                            .await
+                            .map_err(|e| format!("reading backup blob: {e:?}"))?;
+                        crate::otools::save_file(&name, &js_sys::Uint8Array::new(&bytes).to_vec());
+                        Ok(())
+                    } else {
+                        safety::download_blob(&name, &blob)
+                    }
+                })
+            });
             wasm_bindgen_futures::spawn_local(async move {
-                match safety::backup(files, b, names).await {
+                match safety::backup(files, b, names, deliver).await {
                     Ok((n, bytes)) => notice(format!(
                         "Library backed up: {n} original{} ({:.1} MB). Keep the file somewhere safe.",
                         if n == 1 { "" } else { "s" },
