@@ -78,3 +78,8 @@ node scripts/pack-plugin.mjs        # 打 .oplg（配合 verify-plugin.mjs 校�
 ```
 
 详细约定见 [AGENTS.md](./AGENTS.md)。
+
+## 当前移植快照（2026-11-25）
+
+当前 `upstream.pin` 固定到 [`ddc0eef377a7`](https://github.com/storytold/lightcraft/commit/ddc0eef377a771a51f3574f8c26ef75be12c7aab)。
+本次同步包含上游自 `f3aa598c697f` 之后的更新；插件发布版本维持不变，发布时再记录发行版本。
